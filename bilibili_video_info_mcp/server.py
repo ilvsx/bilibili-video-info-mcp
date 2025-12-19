@@ -16,30 +16,33 @@ mcp = FastMCP("BilibiliVideoInfo", dependencies=["requests"])
         "openWorldHint": False
     }
 )
-async def get_subtitles(url: str) -> list:
+async def get_subtitles(url: str, lang: str = None, all_languages: bool = False) -> list:
     """Get subtitles from a Bilibili video
-    
+
     Args:
         url: Bilibili video URL, e.g., https://www.bilibili.com/video/BV1x341177NN
-        
+        lang: Specific language code to fetch. Options: zh, ai-zh, en, ai-en, ja, ai-ja, etc.
+              If not specified, uses priority order: zh > ai-zh > en > ai-en > ja > ai-ja
+        all_languages: If True, fetch all available subtitle languages. Default is False.
+
     Returns:
-        List of subtitles grouped by language. Each entry contains subtitle content with timestamps.
+        List of subtitles. Each entry contains 'lan' (language code), 'lan_doc' (language name), and 'content' (list of subtitle lines).
     """
     bvid = bilibili_api.extract_bvid(url)
     if not bvid:
-        return [f"错误: 无法从 URL 提取 BV 号: {url}"]
-    
+        return [{"error": f"无法从 URL 提取 BV 号: {url}"}]
+
     aid, cid, error = bilibili_api.get_video_basic_info(bvid)
     if error:
-        return [f"获取视频信息失败: {error['error']}"]
-    
-    subtitles, error = bilibili_api.get_subtitles(aid, cid)
+        return [{"error": f"获取视频信息失败: {error['error']}"}]
+
+    subtitles, error = bilibili_api.get_subtitles(aid, cid, lang=lang, all_languages=all_languages)
     if error:
-        return [f"获取字幕失败: {error['error']}"]
-    
+        return [{"error": f"获取字幕失败: {error['error']}"}]
+
     if not subtitles:
-        return ["该视频没有字幕"]
-    
+        return [{"message": "该视频没有字幕"}]
+
     return subtitles
 
 @mcp.tool(

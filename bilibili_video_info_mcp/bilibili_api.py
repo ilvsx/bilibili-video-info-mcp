@@ -245,31 +245,87 @@ def get_video_basic_info(bvid):
     except requests.RequestException as e:
         return None, None, {'error': f'Failed to fetch video details: {e}'}
 
-def get_subtitles(aid, cid):
-    """Fetches subtitles for a given aid and cid."""
-    headers = _get_headers()
+# Language priority for subtitle selection
+SUBTITLE_LANGUAGE_PRIORITY = ['zh', 'ai-zh', 'en', 'ai-en', 'ja', 'ai-ja']
+
+
+def get_subtitles(aid, cid, lang: str = None, all_languages: bool = False):
+    """Fetches subtitles for a given aid and cid.
+
+    Args:
+        aid: Video aid
+        cid: Video cid
+        lang: Specific language code to fetch (e.g., 'zh', 'ai-zh', 'en', 'ai-en').
+              If None, uses priority order: zh > ai-zh > en > ai-en > ja > ai-ja
+        all_languages: If True, fetch all available languages. Overrides lang parameter.
+
+    Returns:
+        Tuple of (subtitles_list, error_dict or None)
+    """
+    headers = _get_headers(with_buvid3=True)
     subtitles = []
     try:
         params_subtitle = {'aid': aid, 'cid': cid}
-        response_subtitle = requests.get(API_GET_SUBTITLE, params=params_subtitle, headers=headers)
+        # Sign params with WBI for subtitle API
+        signed_params = _sign_params_wbi(params_subtitle)
+        response_subtitle = requests.get(API_GET_SUBTITLE, params=signed_params, headers=headers)
         response_subtitle.raise_for_status()
         subtitle_data = response_subtitle.json()
-        if subtitle_data.get('code') == 0 and subtitle_data.get('data', {}).get('subtitle', {}).get('subtitles'):
-            for sub_meta in subtitle_data['data']['subtitle']['subtitles']:
-                if sub_meta.get('subtitle_url'):
-                    try:
-                        subtitle_json_url = f"https:{sub_meta['subtitle_url']}"
-                        response_sub_content = requests.get(subtitle_json_url, headers=headers)
-                        response_sub_content.raise_for_status()
-                        sub_content = response_sub_content.json()
-                        subtitle_body = sub_content.get('body', [])
-                        content_list = [item.get('content', '') for item in subtitle_body]
-                        subtitles.append({
-                            'lan': sub_meta['lan'],
-                            'content': content_list
-                        })
-                    except requests.RequestException as e:
-                        print(f"Could not fetch or parse subtitle content from {sub_meta.get('subtitle_url')}: {e}")
+
+        if subtitle_data.get('code') != 0:
+            return [], {'error': f"API error: {subtitle_data.get('message', 'Unknown error')}"}
+
+        available_subtitles = subtitle_data.get('data', {}).get('subtitle', {}).get('subtitles', [])
+        if not available_subtitles:
+            return [], None
+
+        # Build a map of language -> subtitle metadata
+        subtitle_map = {sub['lan']: sub for sub in available_subtitles if sub.get('subtitle_url')}
+
+        # Determine which subtitles to fetch
+        if all_languages:
+            # Fetch all available languages
+            langs_to_fetch = list(subtitle_map.keys())
+        elif lang:
+            # Fetch specific language if available
+            if lang in subtitle_map:
+                langs_to_fetch = [lang]
+            else:
+                # Try to find a close match (e.g., 'zh' matches 'zh-Hans')
+                langs_to_fetch = [l for l in subtitle_map.keys() if l.startswith(lang)]
+                if not langs_to_fetch:
+                    return [], {'error': f"Language '{lang}' not available. Available: {list(subtitle_map.keys())}"}
+        else:
+            # Use priority order, fetch first available
+            langs_to_fetch = []
+            for priority_lang in SUBTITLE_LANGUAGE_PRIORITY:
+                if priority_lang in subtitle_map:
+                    langs_to_fetch = [priority_lang]
+                    break
+            # If no priority language found, use first available
+            if not langs_to_fetch and subtitle_map:
+                langs_to_fetch = [list(subtitle_map.keys())[0]]
+
+        # Fetch subtitle content for selected languages
+        for lan in langs_to_fetch:
+            sub_meta = subtitle_map.get(lan)
+            if not sub_meta:
+                continue
+            try:
+                subtitle_json_url = f"https:{sub_meta['subtitle_url']}"
+                response_sub_content = requests.get(subtitle_json_url, headers=headers)
+                response_sub_content.raise_for_status()
+                sub_content = response_sub_content.json()
+                subtitle_body = sub_content.get('body', [])
+                content_list = [item.get('content', '') for item in subtitle_body]
+                subtitles.append({
+                    'lan': sub_meta['lan'],
+                    'lan_doc': sub_meta.get('lan_doc', ''),
+                    'content': content_list
+                })
+            except requests.RequestException as e:
+                print(f"Could not fetch subtitle content for {lan}: {e}")
+
         return subtitles, None
     except requests.RequestException as e:
         return [], {'error': f'Could not fetch subtitles: {e}'}
