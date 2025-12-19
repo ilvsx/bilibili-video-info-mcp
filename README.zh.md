@@ -177,7 +177,7 @@ SESSDATA=你的SESSDATA值
 
 ### 4. AI 字幕无法获取？
 
-AI 生成字幕需要 Bilibili 大会员。请确保你的 SESSDATA 来自拥有大会员的账号。
+部分账号可能无法获取 AI 生成字幕，具体原因未知。如果无法获取 AI 字幕，请尝试使用其他账号的 SESSDATA。
 
 ## 许可证
 

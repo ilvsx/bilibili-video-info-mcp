@@ -178,7 +178,7 @@ Standard Bilibili video links are supported, such as:
 
 ### 4. AI subtitles not showing?
 
-AI-generated subtitles require a Bilibili Premium membership (大会员). Make sure your SESSDATA is from an account with this feature.
+Some accounts may not have access to AI-generated subtitles. The exact requirements are unclear, but if AI subtitles are not available, try using a different account's SESSDATA.
 
 ## License
 
