@@ -18,24 +18,6 @@ This MCP server supports three transport methods:
 
 ### 1. stdio
 
-Using PyPI package:
-```json
-{
-    "mcpServers": {
-        "bilibili-video-info-mcp": {
-            "command": "uvx",
-            "args": [
-                "bilibili-video-info-mcp"
-            ],
-            "env": {
-                "SESSDATA": "your valid sessdata"
-            }
-        }
-    }
-}
-```
-
-Using GitHub repository (latest version):
 ```json
 {
     "mcpServers": {
