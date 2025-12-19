@@ -404,7 +404,7 @@ def search_by_type(keyword: str, search_type: str = 'video', order: str = None,
                     'danmaku': item.get('video_review'),
                     'favorites': item.get('favorites'),
                     'duration': item.get('duration'),
-                    'pubdate': item.get('pubdate'),
+                    'pubdate': _format_timestamp(item.get('pubdate')),
                     'description': item.get('description'),
                     'pic': item.get('pic'),
                     'tag': item.get('tag')
@@ -421,7 +421,7 @@ def search_by_type(keyword: str, search_type: str = 'video', order: str = None,
                     'styles': item.get('styles'),
                     'cv': item.get('cv'),
                     'staff': item.get('staff'),
-                    'pubtime': item.get('pubtime'),
+                    'pubtime': _format_timestamp(item.get('pubtime')),
                     'media_score': item.get('media_score')
                 })
             elif search_type in ['live_room']:
@@ -454,7 +454,7 @@ def search_by_type(keyword: str, search_type: str = 'video', order: str = None,
                     'view': item.get('view'),
                     'like': item.get('like'),
                     'reply': item.get('reply'),
-                    'pub_time': item.get('pub_time'),
+                    'pub_time': _format_timestamp(item.get('pub_time')),
                     'desc': item.get('desc'),
                     'image_urls': item.get('image_urls')
                 })
@@ -506,3 +506,17 @@ def search_by_type(keyword: str, search_type: str = 'video', order: str = None,
 def _strip_html_tags(text: str) -> str:
     """Remove HTML tags from text (used for highlighted search results)."""
     return re.sub(r'<[^>]+>', '', text)
+
+
+def _format_timestamp(timestamp) -> str:
+    """Convert Unix timestamp to human-readable format: YYYY-MM-DD HH:MM:SS UTC+8."""
+    if not timestamp:
+        return ''
+    try:
+        from datetime import datetime, timezone, timedelta
+        # Use UTC+8 (China Standard Time)
+        tz = timezone(timedelta(hours=8))
+        dt = datetime.fromtimestamp(int(timestamp), tz=tz)
+        return dt.strftime('%Y-%m-%d %H:%M:%S UTC+8')
+    except (ValueError, TypeError, OSError):
+        return str(timestamp)

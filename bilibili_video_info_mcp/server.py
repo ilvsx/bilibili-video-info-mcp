@@ -119,7 +119,7 @@ async def get_comments(url: str) -> list:
 async def search(
     keyword: str,
     search_type: str = 'video',
-    order: str = None,
+    order: str = 'click',
     page: int = 1,
     duration: int = None,
     tids: int = None,
@@ -127,9 +127,13 @@ async def search(
     order_sort: int = None,
     category_id: int = None,
     pubtime_begin_s: int = 0,
-    pubtime_end_s: int = 0
+    pubtime_end_s: int = 0,
+    recent_days: int = 0,
+    recent_weeks: int = 0
 ) -> dict:
-    """Search Bilibili by category
+    """Search Bilibili by category. Each page returns 20 results.
+
+    IMPORTANT: For time filtering (e.g., "last week", "last 3 days"), use recent_days or recent_weeks parameters (recommended). The "order" parameter only controls sorting, NOT time filtering!
 
     Args:
         keyword: Search keyword
@@ -144,12 +148,12 @@ async def search(
             - topic: Topics/话题
             - bili_user: Users/用户
             - photo: Photo albums/相簿
-        order: Sort order (varies by search_type):
-            - For video/article/photo: totalrank(综合), click(点击), pubdate(发布时间), dm(弹幕), stow(收藏), scores(评论)
-            - For article only: attention(喜欢)
-            - For live_room: online(人气), live_time(开播时间)
-            - For bili_user: 0(默认), fans(粉丝), level(等级)
-        page: Page number (default 1, max 50 pages)
+        order: Sort order for results (default: click). NOTE: This only controls sorting, NOT time filtering!
+            - For video/article/photo: click(按点击量,default), totalrank(综合排序), pubdate(按发布时间), dm(按弹幕数), stow(按收藏数), scores(按评论数)
+            - For article only: attention(按喜欢数)
+            - For live_room: online(按人气), live_time(按开播时间)
+            - For bili_user: 0(默认), fans(按粉丝数), level(按等级)
+        page: Page number (default 1, max 50 pages, 20 results per page)
         duration: Video duration filter (video only):
             - 0: All durations
             - 1: Under 10 minutes
@@ -168,12 +172,29 @@ async def search(
         category_id: Category filter for article/photo:
             - Article: 0(全部), 2(动画), 1(游戏), 28(影视), 3(生活), 29(兴趣), 16(轻小说), 17(科技)
             - Photo: 0(全部), 1(画友), 2(摄影)
-        pubtime_begin_s: Publish time range start (Unix timestamp in seconds, 0 for no limit)
-        pubtime_end_s: Publish time range end (Unix timestamp in seconds, 0 for no limit)
+        recent_days: Filter content published within the last N days (0 = no limit). Example: recent_days=7 for last 7 days, recent_days=30 for last month. This is the RECOMMENDED way to filter by time.
+        recent_weeks: Filter content published within the last N weeks (0 = no limit). Example: recent_weeks=1 for last week, recent_weeks=4 for last month.
+        pubtime_begin_s: Advanced: Start of publish time range as Unix timestamp in seconds. Use recent_days/recent_weeks instead for simpler usage. Set to 0 to disable.
+        pubtime_end_s: Advanced: End of publish time range as Unix timestamp in seconds. Use recent_days/recent_weeks instead for simpler usage. Set to 0 to disable.
 
     Returns:
         Search results with pagination info. Results format varies by search_type.
+
+    Examples:
+        - Search videos from last week: recent_weeks=1 or recent_days=7
+        - Search videos from last 3 days sorted by clicks: order="click", recent_days=3
+        - Search videos from last month: recent_days=30 or recent_weeks=4
     """
+    import time as time_module
+
+    # Calculate pubtime from recent_days/recent_weeks (priority: recent_weeks > recent_days > pubtime_*)
+    if recent_weeks > 0:
+        pubtime_end_s = int(time_module.time())
+        pubtime_begin_s = pubtime_end_s - recent_weeks * 7 * 24 * 3600
+    elif recent_days > 0:
+        pubtime_end_s = int(time_module.time())
+        pubtime_begin_s = pubtime_end_s - recent_days * 24 * 3600
+
     results, error = bilibili_api.search_by_type(
         keyword=keyword,
         search_type=search_type,
