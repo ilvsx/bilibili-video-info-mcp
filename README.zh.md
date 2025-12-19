@@ -17,12 +17,32 @@ MCP Server 支持三种通信方式：
 
 ### 1. stdio
 
+使用 PyPI 包：
 ```json
 {
     "mcpServers": {
         "bilibili-video-info-mcp": {
             "command": "uvx",
             "args": [
+                "bilibili-video-info-mcp"
+            ],
+            "env": {
+                "SESSDATA": "你的 SESSDATA"
+            }
+        }
+    }
+}
+```
+
+使用 GitHub 仓库（最新版本）：
+```json
+{
+    "mcpServers": {
+        "bilibili-video-info-mcp": {
+            "command": "uvx",
+            "args": [
+                "--from",
+                "git+https://github.com/ilvsx/bilibili-video-info-mcp.git",
                 "bilibili-video-info-mcp"
             ],
             "env": {
